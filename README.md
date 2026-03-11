@@ -209,7 +209,7 @@ fraud-detection-system/
 
 data/
 
-transactions.csv
+creditcard.csv
 
 database/
 
@@ -217,9 +217,9 @@ schema.sql
 
 notebooks/
 
-exploratory_analysis.ipynb
+DataExploration.ipynb
 
-model_training.ipynb
+ModelTraining.ipynb
 
 src/
 
