@@ -215,17 +215,31 @@ database/
 
 schema.sql
 
+prediction.sql
+
+queries.sql
+
 notebooks/
 
 DataExploration.ipynb
 
 ModelTraining.ipynb
 
+load_trasaction.ipynb
+
+predict_transaction.ipynb
+
+fraud_model.pkl
+
 src/
 
-fraud_model.py
+ >venv
+
+app.py
 
 templates/
+
+base.html 
 
 dashboard.html
 
