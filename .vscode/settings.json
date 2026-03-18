@@ -1,0 +1,18 @@
+{
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "PGlocal",
+            "username": "postgres",
+            "database": "fraud_detection",
+            "password": "postgres",
+            "connectionTimeout": 30
+        }
+    ],
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.defaultPackageManager": "ms-python.python:pip"
+}

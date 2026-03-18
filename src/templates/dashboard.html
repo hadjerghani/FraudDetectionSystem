@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_heading %}Fraud Monitor{% endblock %}
+{% block page_sub %}{{ kpis.total_txn }} transactions indexed - LogisticRegression model{% endblock %}
+
+{% block content %}
+
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Total Transactions</div>
+    <div class="kpi-value">{{ kpis.total_txn }}</div>
+    <div class="kpi-sub">Full creditcard.csv dataset</div>
+    <span class="kpi-bg-icon">&#x1F4B3;</span>
+  </div>
+  <div class="kpi r">
+    <div class="kpi-label">Predicted Fraud</div>
+    <div class="kpi-value r">{{ kpis.fraud_count }}</div>
+    <div class="kpi-sub">predicted_label = 1</div>
+    <span class="kpi-bg-icon">&#x1F6A8;</span>
+  </div>
+  <div class="kpi a">
+    <div class="kpi-label">Fraud Rate</div>
+    <div class="kpi-value a">{{ kpis.fraud_rate }}%</div>
+    <div class="kpi-sub">Of all transactions</div>
+    <span class="kpi-bg-icon">&#x1F4C9;</span>
+  </div>
+  <div class="kpi g">
+    <div class="kpi-label">Legitimate</div>
+    <div class="kpi-value g">{{ kpis.legit_count }}</div>
+    <div class="kpi-sub">predicted_label = 0</div>
+    <span class="kpi-bg-icon">&#x2705;</span>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Total Volume</div>
+    <div class="kpi-value">${{ kpis.total_amount }}</div>
+    <div class="kpi-sub">Sum of all amounts (USD)</div>
+    <span class="kpi-bg-icon">&#x1F4B0;</span>
+  </div>
+  <div class="kpi r">
+    <div class="kpi-label">Amount at Risk</div>
+    <div class="kpi-value r">${{ kpis.fraud_amount }}</div>
+    <div class="kpi-sub">Sum of flagged transactions</div>
+    <span class="kpi-bg-icon">&#x26A0;&#xFE0F;</span>
+  </div>
+  <div class="kpi p">
+    <div class="kpi-label">True Positives</div>
+    <div class="kpi-value p">{{ kpis.true_positives }}</div>
+    <div class="kpi-sub">Model + ground truth agree</div>
+    <span class="kpi-bg-icon">&#x1F3AF;</span>
+  </div>
+</div>
+
+<div class="chart-row col-2">
+  <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <div class="chart-title">Prediction Split</div>
+        <div class="chart-sub">Fraud vs. legitimate distribution</div>
+      </div>
+      <span class="chip chip-red">MODEL OUTPUT</span>
+    </div>
+    <canvas id="splitChart" height="200"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <div class="chart-title">Confusion Matrix</div>
+        <div class="chart-sub">Predicted vs. ground truth (fraud_flag)</div>
+      </div>
+      <span class="chip chip-blue">EVALUATION</span>
+    </div>
+    <div class="cm-grid">
+      <div class="cm-cell tp"><div class="cm-cell-val" id="cm-tp">...</div><div class="cm-cell-lbl">True Positive</div></div>
+      <div class="cm-cell fp"><div class="cm-cell-val" id="cm-fp">...</div><div class="cm-cell-lbl">False Positive</div></div>
+      <div class="cm-cell fn"><div class="cm-cell-val" id="cm-fn">...</div><div class="cm-cell-lbl">False Negative</div></div>
+      <div class="cm-cell tn"><div class="cm-cell-val" id="cm-tn">...</div><div class="cm-cell-lbl">True Negative</div></div>
+    </div>
+    <div id="cm-metrics" style="margin-top:.8rem;display:flex;gap:1rem;font-size:.7rem;color:var(--text-2);font-family:var(--mono)"></div>
+  </div>
+</div>
+
+<div class="chart-row col-3-1">
+  <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <div class="chart-title">Transaction Amount Distribution</div>
+        <div class="chart-sub">Fraud vs. legitimate split by $ bucket</div>
+      </div>
+      <span class="chip chip-blue">AMOUNT</span>
+    </div>
+    <canvas id="amountChart" height="100"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <div class="chart-title">Top Fraud Amounts</div>
+        <div class="chart-sub">Highest-value flagged txns</div>
+      </div>
+      <span class="chip chip-red">TOP 10</span>
+    </div>
+    <canvas id="topAmountChart" height="160"></canvas>
+  </div>
+</div>
+
+<div class="alert alert-warn">
+  &#x1F6A8; <strong>{{ kpis.fraud_count }}</strong> transactions were flagged as fraudulent.
+  <a href="{{ url_for('alerts') }}" style="margin-left:.5rem;font-weight:600">View all fraud alerts &rarr;</a>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+'use strict';
+var C={red:'#f85149',redA:'rgba(248,81,73,.18)',blue:'#58a6ff',blueA:'rgba(88,166,255,.18)',green:'#3fb950',amber:'#d29922',grid:'#30363d'};
+
+fetch('/api/chart/fraud-split').then(function(r){return r.json();}).then(function(d){
+  new Chart(document.getElementById('splitChart'),{type:'doughnut',data:{labels:d.labels,datasets:[{data:d.values,backgroundColor:[C.redA,C.blueA],borderColor:[C.red,C.blue],borderWidth:1.5,hoverOffset:6}]},options:{responsive:true,cutout:'62%',plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:function(ctx){var t=ctx.dataset.data.reduce(function(a,b){return a+b;},0);return ' '+ctx.label+': '+ctx.parsed.toLocaleString()+' ('+(ctx.parsed/t*100).toFixed(1)+'%)';}}}}}}); 
+});
+
+fetch('/api/chart/confusion-matrix').then(function(r){return r.json();}).then(function(d){
+  document.getElementById('cm-tp').textContent=Number(d.tp).toLocaleString();
+  document.getElementById('cm-fp').textContent=Number(d.fp).toLocaleString();
+  document.getElementById('cm-fn').textContent=Number(d.fn).toLocaleString();
+  document.getElementById('cm-tn').textContent=Number(d.tn).toLocaleString();
+  var tp=+d.tp,fp=+d.fp,fn=+d.fn,tn=+d.tn;
+  var prec=tp/(tp+fp)||0,rec=tp/(tp+fn)||0,f1=2*prec*rec/(prec+rec)||0,acc=(tp+tn)/(tp+fp+fn+tn)||0;
+  document.getElementById('cm-metrics').innerHTML='<span>Precision: <strong style="color:var(--green)">'+( prec*100).toFixed(1)+'%</strong></span><span>Recall: <strong style="color:var(--amber)">'+( rec*100).toFixed(1)+'%</strong></span><span>F1: <strong style="color:var(--blue)">'+( f1*100).toFixed(1)+'%</strong></span><span>Accuracy: <strong style="color:var(--text)">'+( acc*100).toFixed(1)+'%</strong></span>';
+});
+
+fetch('/api/chart/amount-distribution').then(function(r){return r.json();}).then(function(d){
+  new Chart(document.getElementById('amountChart'),{type:'bar',data:{labels:d.labels,datasets:[{label:'Legitimate',data:d.total.map(function(t,i){return t-d.fraud[i];}),backgroundColor:C.blueA,borderColor:C.blue,borderWidth:1},{label:'Fraud',data:d.fraud,backgroundColor:C.redA,borderColor:C.red,borderWidth:1}]},options:{responsive:true,interaction:{intersect:false,mode:'index'},scales:{x:{stacked:true,grid:{color:C.grid}},y:{stacked:true,grid:{color:C.grid},beginAtZero:true}},plugins:{legend:{position:'bottom'}}}});
+});
+
+fetch('/api/chart/top-amounts').then(function(r){return r.json();}).then(function(d){
+  new Chart(document.getElementById('topAmountChart'),{type:'bar',data:{labels:d.labels,datasets:[{label:'Amount ($)',data:d.values,backgroundColor:C.redA,borderColor:C.red,borderWidth:1}]},options:{indexAxis:'y',responsive:true,scales:{x:{grid:{color:C.grid},beginAtZero:true,ticks:{callback:function(v){return '$'+v.toLocaleString();}}},y:{grid:{color:C.grid}}},plugins:{legend:{display:false}}}});
+});
+</script>
+{% endblock %}
